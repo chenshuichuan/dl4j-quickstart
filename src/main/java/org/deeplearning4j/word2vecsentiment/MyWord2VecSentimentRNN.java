@@ -104,7 +104,7 @@ public class MyWord2VecSentimentRNN {
 
     MultiLayerNetwork net = new MultiLayerNetwork(conf);
     net.init();
-    net.setListeners(new ScoreIterationListener(1));
+    net.setListeners(new ScoreIterationListener(10));
 
     //DataSetIterators for training and testing respectively
     WordVectors wordVectors = WordVectorSerializer.loadStaticModel(new File(WORD_VECTORS_PATH));
@@ -120,7 +120,7 @@ public class MyWord2VecSentimentRNN {
       System.out.println("Epoch " + i + " complete. Starting evaluation:");
     }
     //Run evaluation. This is on 25k reviews, so can take some time
-    Evaluation evaluation = net.evaluate(test);
+    Evaluation evaluation = net.evaluate(train);
     System.out.println(evaluation.stats());
     log.info("SAVE TRAINED MODEL");
     // Where to save model
