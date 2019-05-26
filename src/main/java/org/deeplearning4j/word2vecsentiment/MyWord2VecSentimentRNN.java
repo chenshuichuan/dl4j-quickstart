@@ -2,9 +2,12 @@ package org.deeplearning4j.word2vecsentiment;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+import org.datavec.api.records.reader.RecordReader;
+import org.datavec.api.records.reader.impl.csv.CSVRecordReader;
+import org.datavec.api.split.FileSplit;
+import org.datavec.api.util.ClassPathResource;
+import org.deeplearning4j.datasets.datavec.RecordReaderDataSetIterator;
 import org.deeplearning4j.eval.Evaluation;
-import org.deeplearning4j.util.ModelSerializer;
-import org.deeplearning4j.utilities.DataUtilities;
 import org.deeplearning4j.models.embeddings.loader.WordVectorSerializer;
 import org.deeplearning4j.models.embeddings.wordvectors.WordVectors;
 import org.deeplearning4j.nn.conf.GradientNormalization;
@@ -16,10 +19,13 @@ import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
+import org.deeplearning4j.util.ModelSerializer;
+import org.deeplearning4j.utilities.DataUtilities;
 import org.nd4j.linalg.activations.Activation;
-import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.dataset.DataSet;
+import org.nd4j.linalg.dataset.SplitTestAndTrain;
+import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.slf4j.Logger;
@@ -52,20 +58,16 @@ import java.net.URL;
  *
  * @author Alex Black
  */
-public class Word2VecSentimentRNN {
-  private static Logger log = LoggerFactory.getLogger(Word2VecSentimentRNN.class);
-
-  /**
-   * Data URL for downloading
-   */
-  public static final String DATA_URL = "http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz";
+public class MyWord2VecSentimentRNN {
+  private static Logger log = LoggerFactory.getLogger(MyWord2VecSentimentRNN.class);
   /**
    * Location to save and extract the training/testing data
    */
-  public static final String DATA_PATH = FilenameUtils.concat("E:/chenyuan/dataSets", "dl4j_w2vSentiment/");
+  public static final String DATA_PATH = "E:\\chenyuan\\dataSets\\20190520_train.csv";
+  public static final String Test_DATA_PATH = "E:\\chenyuan\\dataSets\\20190520_test.csv";
+
   /** Location (local file system) for the Google News vectors. Set this manually. */
- // public static final String WORD_VECTORS_PATH = "E:/chenyuan/dataSets/GoogleNews-vectors-negative300.bin.gz";
-  public static final String WORD_VECTORS_PATH = "E:\\chenyuan\\dataSets\\VectorModal.bin.gz";
+  public static final String WORD_VECTORS_PATH = "E:\\chenyuan\\dataSets\\VectorModal50.bin";
 
 
   public static void main(String[] args) throws Exception {
@@ -73,13 +75,10 @@ public class Word2VecSentimentRNN {
       throw new RuntimeException("Please set the WORD_VECTORS_PATH before running this example");
     }
 
-    //Download and extract data
-   // downloadData();
-
     int batchSize = 64;     //Number of examples in each minibatch
-    int vectorSize = 100;   //Size of the word vectors. 300 in the Google News model
+    int vectorSize = 50;   //Size of the word vectors. 300 in the Google News model
     int nEpochs = 1;        //Number of epochs (full passes of training data) to train on
-    int truncateReviewsToLength = 100;  //Truncate reviews with length (# words) greater than this
+    int truncateReviewsToLength = 50;  //Truncate reviews with length (# words) greater than this
     final int seed = 0;     //Seed for reproducibility
 
     Nd4j.getMemoryManager().setAutoGcWindow(10000);  //https://deeplearning4j.org/workspaces
@@ -105,19 +104,20 @@ public class Word2VecSentimentRNN {
 
     //DataSetIterators for training and testing respectively
     WordVectors wordVectors = WordVectorSerializer.loadStaticModel(new File(WORD_VECTORS_PATH));
-    SentimentExampleIterator train = new SentimentExampleIterator(DATA_PATH, wordVectors, batchSize, truncateReviewsToLength, true);
-    SentimentExampleIterator test = new SentimentExampleIterator(DATA_PATH, wordVectors, batchSize, truncateReviewsToLength, false);
 
+    SentimentIterator train = new SentimentIterator(DATA_PATH, wordVectors, batchSize, truncateReviewsToLength, true);
+    SentimentIterator test = new SentimentIterator(Test_DATA_PATH, wordVectors, batchSize, truncateReviewsToLength, false);
+
+    //train.setCursor(4736);
     System.out.println("Starting training");
     for (int i = 0; i < nEpochs; i++) {
       net.fit(train);
       train.reset();
       System.out.println("Epoch " + i + " complete. Starting evaluation:");
-
-      //Run evaluation. This is on 25k reviews, so can take some time
-      Evaluation evaluation = net.evaluate(test);
-      System.out.println(evaluation.stats());
     }
+    //Run evaluation. This is on 25k reviews, so can take some time
+    Evaluation evaluation = net.evaluate(test);
+    System.out.println(evaluation.stats());
     log.info("SAVE TRAINED MODEL");
     // Where to save model
     File locationToSave = new File(DATA_PATH + "trained_model.zip");
@@ -126,52 +126,7 @@ public class Word2VecSentimentRNN {
     // ModelSerializer needs modelname, saveUpdater, Location
     ModelSerializer.writeModel(net, locationToSave, saveUpdater);
 
-    //After training: load a single example and generate predictions
-//    File firstPositiveReviewFile = new File(FilenameUtils.concat(DATA_PATH, "aclImdb/test/pos/0_10.txt"));
-//    String firstPositiveReview = FileUtils.readFileToString(firstPositiveReviewFile);
-//
-//    INDArray features = test.loadFeaturesFromString(firstPositiveReview, truncateReviewsToLength);
-//    INDArray networkOutput = net.output(features);
-//    int timeSeriesLength = (int) networkOutput.size(2);
-//    INDArray probabilitiesAtLastWord = networkOutput.get(NDArrayIndex.point(0), NDArrayIndex.all(), NDArrayIndex.point(timeSeriesLength - 1));
-//
-//    System.out.println("\n\n-------------------------------");
-//    System.out.println("First positive review: \n" + firstPositiveReview);
-//    System.out.println("\n\nProbabilities at last time step:");
-//    System.out.println("p(positive): " + probabilitiesAtLastWord.getDouble(0));
-//    System.out.println("p(negative): " + probabilitiesAtLastWord.getDouble(1));
-
     System.out.println("----- Example complete -----");
   }
-
-  public static void downloadData() throws Exception {
-    //Create directory if required
-    File directory = new File(DATA_PATH);
-    if (!directory.exists()) directory.mkdir();
-
-    //Download file:
-    String archizePath = DATA_PATH + "aclImdb_v1.tar.gz";
-    File archiveFile = new File(archizePath);
-    String extractedPath = DATA_PATH + "aclImdb";
-    File extractedFile = new File(extractedPath);
-
-    if (!archiveFile.exists()) {
-      System.out.println("Starting data download (80MB)...");
-      FileUtils.copyURLToFile(new URL(DATA_URL), archiveFile);
-      System.out.println("Data (.tar.gz file) downloaded to " + archiveFile.getAbsolutePath());
-      //Extract tar.gz file to output directory
-      DataUtilities.extractTarGz(archizePath, DATA_PATH);
-    } else {
-      //Assume if archive (.tar.gz) exists, then data has already been extracted
-      System.out.println("Data (.tar.gz file) already exists at " + archiveFile.getAbsolutePath());
-      if (!extractedFile.exists()) {
-        //Extract tar.gz file to output directory
-        DataUtilities.extractTarGz(archizePath, DATA_PATH);
-      } else {
-        System.out.println("Data (extracted) already exists at " + extractedFile.getAbsolutePath());
-      }
-    }
-  }
-
 
 }

@@ -25,7 +25,7 @@ public class Word2VecRawTextExample {
     public static void main(String[] args) throws Exception {
 
         // Gets Path to Text file
-        String filePath = "E:\\chenyuan\\dataSets\\ksci\\train.txt";
+        String filePath = "E:\\chenyuan\\dataSets\\word.txt";
 
         log.info("Load & Vectorize Sentences....");
         // Strip white space before and after for each line
@@ -42,9 +42,9 @@ public class Word2VecRawTextExample {
 
         log.info("Building model....");
         Word2Vec vec = new Word2Vec.Builder()
-                .minWordFrequency(5)
+                .minWordFrequency(1)
                 .iterations(1)
-                .layerSize(100)
+                .layerSize(50)
                 .seed(42)
                 .windowSize(5)
                 .iterate(iter)
@@ -55,7 +55,7 @@ public class Word2VecRawTextExample {
         vec.fit();
 
         log.info("Writing word vectors to text file....");
-        WordVectorSerializer.writeWord2VecModel(vec, "E:\\chenyuan\\dataSets\\ksci\\VectorModal.bin");
+        WordVectorSerializer.writeWord2VecModel(vec, "E:\\chenyuan\\dataSets\\VectorModal50.bin");
         // Prints out the closest 10 words to "day". An example on what to do with these Word Vectors.
         log.info("Closest Words:");
         Collection<String> lst = vec.wordsNearestSum("day", 10);
