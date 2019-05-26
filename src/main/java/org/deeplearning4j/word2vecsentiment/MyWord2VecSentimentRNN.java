@@ -21,6 +21,7 @@ import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.deeplearning4j.util.ModelSerializer;
 import org.deeplearning4j.utilities.DataUtilities;
+import org.deeplearning4j.utilities.Params;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.SplitTestAndTrain;
@@ -71,15 +72,18 @@ public class MyWord2VecSentimentRNN {
 
 
   public static void main(String[] args) throws Exception {
+    runModal();
+  }
+  public static void runModal()throws Exception{
     if (WORD_VECTORS_PATH.startsWith("/PATH/TO/YOUR/VECTORS/")) {
       throw new RuntimeException("Please set the WORD_VECTORS_PATH before running this example");
     }
 
-    int batchSize = 64;     //Number of examples in each minibatch
-    int vectorSize = 50;   //Size of the word vectors. 300 in the Google News model
-    int nEpochs = 1;        //Number of epochs (full passes of training data) to train on
-    int truncateReviewsToLength = 50;  //Truncate reviews with length (# words) greater than this
-    final int seed = 0;     //Seed for reproducibility
+    int batchSize = Params.batchSize;     //Number of examples in each minibatch
+    int vectorSize = Params.vectorSize;   //Size of the word vectors. 300 in the Google News model
+    int nEpochs = Params.nEpochs;        //Number of epochs (full passes of training data) to train on
+    int truncateReviewsToLength = Params.truncateReviewsToLength;  //Truncate reviews with length (# words) greater than this
+    final int seed = Params.seed;     //Seed for reproducibility
 
     Nd4j.getMemoryManager().setAutoGcWindow(10000);  //https://deeplearning4j.org/workspaces
 
@@ -105,8 +109,8 @@ public class MyWord2VecSentimentRNN {
     //DataSetIterators for training and testing respectively
     WordVectors wordVectors = WordVectorSerializer.loadStaticModel(new File(WORD_VECTORS_PATH));
 
-    SentimentIterator train = new SentimentIterator(DATA_PATH, wordVectors, batchSize, truncateReviewsToLength, true);
-    SentimentIterator test = new SentimentIterator(Test_DATA_PATH, wordVectors, batchSize, truncateReviewsToLength, false);
+    SentimentIterator train = new SentimentIterator(Params.DATA_PATH, wordVectors, batchSize, truncateReviewsToLength, true);
+    SentimentIterator test = new SentimentIterator(Params.Test_DATA_PATH, wordVectors, batchSize, truncateReviewsToLength, false);
 
     //train.setCursor(4736);
     System.out.println("Starting training");
@@ -120,7 +124,7 @@ public class MyWord2VecSentimentRNN {
     System.out.println(evaluation.stats());
     log.info("SAVE TRAINED MODEL");
     // Where to save model
-    File locationToSave = new File(DATA_PATH + "trained_model.zip");
+    File locationToSave = new File(Params.MODAL_PATH);
     // boolean save Updater
     boolean saveUpdater = false;
     // ModelSerializer needs modelname, saveUpdater, Location

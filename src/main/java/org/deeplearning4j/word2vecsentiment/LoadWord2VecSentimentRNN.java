@@ -18,6 +18,7 @@ import org.deeplearning4j.nn.conf.layers.RnnOutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
+import org.deeplearning4j.utilities.Params;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.api.DataSet;
@@ -65,38 +66,42 @@ public class LoadWord2VecSentimentRNN {
   /**
    * Location to save and extract the training/testing data
    */
-  public static final String DATA_PATH = "E:\\chenyuan\\dataSets\\20190520_train.csv";
-  public static final String resultCsvPath = "E:\\chenyuan\\dataSets\\result.csv";
-  public static final String Test_DATA_PATH = "E:\\chenyuan\\dataSets\\20190520_test.csv";
+//  public static final String DATA_PATH = "E:\\chenyuan\\dataSets\\20190520_train.csv";
+//  public static final String resultCsvPath = "E:\\chenyuan\\dataSets\\result.csv";
+//  public static final String Test_DATA_PATH = "E:\\chenyuan\\dataSets\\20190520_test.csv";
 
   /**
    * Location (local file system) for the Google News vectors. Set this manually.
    */
-  public static final String WORD_VECTORS_PATH = "E:\\chenyuan\\dataSets\\VectorModal50.bin";
+  //public static final String WORD_VECTORS_PATH = "E:\\chenyuan\\dataSets\\VectorModal50.bin";
 
 
   public static void main(String[] args) throws Exception {
-    if (WORD_VECTORS_PATH.startsWith("/PATH/TO/YOUR/VECTORS/")) {
+    LoadTestData();
+  }
+
+  public static void LoadTestData()throws Exception{
+    if (Params.WORD_VECTORS_PATH.startsWith("/PATH/TO/YOUR/VECTORS/")) {
       throw new RuntimeException("Please set the WORD_VECTORS_PATH before running this example");
     }
 
-    int batchSize = 64;     //Number of examples in each minibatch
-    int vectorSize = 50;   //Size of the word vectors. 300 in the Google News model
-    int nEpochs = 1;        //Number of epochs (full passes of training data) to train on
-    int truncateReviewsToLength = 50;  //Truncate reviews with length (# words) greater than this
-    final int seed = 0;     //Seed for reproducibility
+    int batchSize = Params.batchSize;     //Number of examples in each minibatch
+    int vectorSize = Params.vectorSize;   //Size of the word vectors. 300 in the Google News model
+    int nEpochs = Params.nEpochs;        //Number of epochs (full passes of training data) to train on
+    int truncateReviewsToLength = Params.truncateReviewsToLength;  //Truncate reviews with length (# words) greater than this
+    final int seed = Params.seed;     //Seed for reproducibility
 
     Nd4j.getMemoryManager().setAutoGcWindow(10000);  //https://deeplearning4j.org/workspaces
     // Where to save model
-    File locationToSave = new File(DATA_PATH + "trained_model.zip");
+    File locationToSave = new File(Params.MODAL_PATH);
     MultiLayerNetwork net = ModelSerializer.restoreMultiLayerNetwork(locationToSave);
     net.getLabels();
 
     //DataSetIterators for training and testing respectively
-    WordVectors wordVectors = WordVectorSerializer.loadStaticModel(new File(WORD_VECTORS_PATH));
-    SentimentIterator test = new SentimentIterator(Test_DATA_PATH, wordVectors, batchSize, truncateReviewsToLength, false);
+    WordVectors wordVectors = WordVectorSerializer.loadStaticModel(new File(Params.WORD_VECTORS_PATH));
+    SentimentIterator test = new SentimentIterator(Params.Test_DATA_PATH, wordVectors, batchSize, truncateReviewsToLength, false);
 
-    DealTest dealTest = new DealTest(Test_DATA_PATH);
+    DealTest dealTest = new DealTest(Params.Test_DATA_PATH);
     List<String[]> stringsList = new ArrayList<>();
 
     for (int i =0;i<dealTest.getTestDataList().size();i++){
@@ -107,16 +112,12 @@ public class LoadWord2VecSentimentRNN {
       INDArray probabilitiesAtLastWord = networkOutput.get(NDArrayIndex.point(0), NDArrayIndex.all(), NDArrayIndex.point(timeSeriesLength - 1));
 
       dealTest.setTestDataPositiveRate(i,probabilitiesAtLastWord.getDouble(0));
-      //System.out.println("p(positive): " + probabilitiesAtLastWord.getDouble(0));
-      //System.out.println("p(negative): " + probabilitiesAtLastWord.getDouble(1));
       String[] strings= dealTest.getTestDataList().get(i).toStrings();
       stringsList.add(strings);
     }
 
     System.out.println("----- Example complete -----");
-    CSVUtils.writeCsvFile(resultCsvPath,dealTest.getTestDataList());
+    CSVUtils.writeCsvFile(Params.resultCsvPath,dealTest.getTestDataList());
     System.out.println("----- writeCsv complete -----");
   }
-
-
 }

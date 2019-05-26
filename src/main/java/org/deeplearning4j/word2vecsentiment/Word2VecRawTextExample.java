@@ -7,6 +7,7 @@ import org.deeplearning4j.text.sentenceiterator.SentenceIterator;
 import org.deeplearning4j.text.tokenization.tokenizer.preprocessor.CommonPreprocessor;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.DefaultTokenizerFactory;
 import org.deeplearning4j.text.tokenization.tokenizerfactory.TokenizerFactory;
+import org.deeplearning4j.utilities.Params;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,11 +43,11 @@ public class Word2VecRawTextExample {
 
         log.info("Building model....");
         Word2Vec vec = new Word2Vec.Builder()
-                .minWordFrequency(1)
-                .iterations(1)
+                .minWordFrequency(Params.minWordFrequency)
+                .iterations(Params.iterations)
                 .layerSize(50)
                 .seed(42)
-                .windowSize(5)
+                .windowSize(Params.windowSize)
                 .iterate(iter)
                 .tokenizerFactory(t)
                 .build();
